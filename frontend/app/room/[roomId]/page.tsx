@@ -9,7 +9,10 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ArrowLeft, Send, Users, Copy, Check } from "lucide-react"
+import { ArrowLeft, Send, Users, Copy, Check } from "lucide-react";;
+
+import { io } from "socket.io-client";
+const socket = io("http://localhost:3000");
 
 interface Message {
   id: string
@@ -32,7 +35,20 @@ export default function ChatRoomPage({ params }: ChatRoomPageProps) {
   const [isCreator, setIsCreator] = useState(false)
   const [copied, setCopied] = useState(false)
   const router = useRouter()
-  const searchParams = useSearchParams()
+  const searchParams = useSearchParams();
+
+
+  socket.on("connect", () => {
+    console.log(socket.id); // x8WIv7-mJelg7on_ALbx
+  });
+
+  socket.on("disconnect", () => {
+    console.log(socket.id); // undefined
+  });
+
+  useEffect(() => {
+    // socket.emit("joinRoom", params.roomId);
+  }, [params.roomId]);
 
   useEffect(() => {
     // Get username and creator status from URL parameters
