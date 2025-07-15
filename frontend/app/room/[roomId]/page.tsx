@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import { use } from 'react';
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -36,19 +36,23 @@ export default function ChatRoomPage({ params }: ChatRoomPageProps) {
   const [copied, setCopied] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams();
+  const {roomId} = use(params);
 
 
   socket.on("connect", () => {
     console.log(socket.id); // x8WIv7-mJelg7on_ALbx
+    
   });
+
+  
 
   socket.on("disconnect", () => {
     console.log(socket.id); // undefined
   });
 
-  useEffect(() => {
-    // socket.emit("joinRoom", params.roomId);
-  }, [params.roomId]);
+  // useEffect(() => {
+  //   // socket.emit("joinRoom", params.roomId);
+  // }, [params.roomId]);
 
   useEffect(() => {
     // Get username and creator status from URL parameters
@@ -63,11 +67,20 @@ export default function ChatRoomPage({ params }: ChatRoomPageProps) {
       {
         id: "1",
         username: "System",
-        content: `Welcome to room: ${params.roomId}`,
+        content: `Welcome to room: ${roomId}`,
         timestamp: new Date(),
         isOwn: false,
       },
     ])
+
+    socket.on("onReceiveMessage", (message) => {
+      console.log("onMessage", message);
+      setMessages((prev) => {
+        console.log("prev", prev);
+        console.log("message", message);
+        return [...prev, message];
+      });
+    });
   }, []) //  ✅ run only once
 
   const handleSendMessage = () => {
@@ -81,6 +94,7 @@ export default function ChatRoomPage({ params }: ChatRoomPageProps) {
       }
       setMessages((prev) => [...prev, message])
       setNewMessage("")
+      socket.emit("onSendMessage", roomId, message);
     }
   }
 
@@ -93,7 +107,7 @@ export default function ChatRoomPage({ params }: ChatRoomPageProps) {
 
   const copyRoomId = async () => {
     try {
-      await navigator.clipboard.writeText(params.roomId)
+      await navigator.clipboard.writeText(roomId)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
@@ -102,7 +116,8 @@ export default function ChatRoomPage({ params }: ChatRoomPageProps) {
   }
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    
+    return new Date(date)?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   }
 
   return (
@@ -116,7 +131,7 @@ export default function ChatRoomPage({ params }: ChatRoomPageProps) {
               Leave Room
             </Button>
             <div>
-              <h1 className="text-xl font-semibold">Room: {params.roomId}</h1>
+              <h1 className="text-xl font-semibold">Room: {roomId}</h1>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="secondary" className="flex items-center gap-1">
                   <Users className="w-3 h-3" />1 online
@@ -158,7 +173,7 @@ export default function ChatRoomPage({ params }: ChatRoomPageProps) {
                       )}
                       <div className="text-sm">{message.content}</div>
                       <div className={`text-xs mt-1 ${message.isOwn ? "text-blue-100" : "text-gray-500"}`}>
-                        {formatTime(message.timestamp)}
+                        {formatTime(message?.timestamp)}
                       </div>
                     </div>
                   </div>

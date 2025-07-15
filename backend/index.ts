@@ -13,7 +13,20 @@ const io = new Server(httpServer, {
 
 io.on("connection", (socket) => {
   console.log("a user connected");
+  socket.on("onSendMessage", (roomId, message) => {
+    console.log("onSendMessage", roomId, message);
+    socket.emit("onReceiveMessage", {
+      id: "232323", 
+      username: "Kunal",
+      content: "Hello world",
+      timestamp: new Date().toISOString(),
+      isOwn: false,
+    });
+  });
+
 });
+
+
 
 // io.listen(3001);
 httpServer.listen(3000, () => {
