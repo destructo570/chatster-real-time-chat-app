@@ -6,22 +6,25 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:3002"
+    origin: ["http://localhost:3002", "http://localhost:3001"]
   }
 });
 
 
 io.on("connection", (socket) => {
   console.log("a user connected");
-  socket.on("onSendMessage", (roomId, message) => {
-    console.log("onSendMessage", roomId, message);
-    socket.emit("onReceiveMessage", {
-      id: "232323", 
-      username: "Kunal",
-      content: "Hello world",
-      timestamp: new Date().toISOString(),
-      isOwn: false,
+
+  socket.on("message", (message) => {
+    console.log("message: ", message);
+    socket.to(message.roomId).emit("message", {
+      ...message,
+      isOwn: false // Mark as not own for recipients
     });
+  });
+
+  socket.on("joinRoom", (roomId) => {
+    console.log("joinRoom", roomId);
+    socket.join(roomId);
   });
 
 });

@@ -9,14 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ArrowLeft, Send, Users, Copy, Check } from "lucide-react";;
-
-import { io } from "socket.io-client";
-const socket = io("http://localhost:3000");
-
+import { ArrowLeft, Send, Users, Copy, Check } from "lucide-react";
+import useSocket from "@/hooks/useSocket";
 interface Message {
   id: string
   username: string
+  roomId: string
   content: string
   timestamp: Date
   isOwn: boolean
@@ -34,25 +32,11 @@ export default function ChatRoomPage({ params }: ChatRoomPageProps) {
   const [username, setUsername] = useState("")
   const [isCreator, setIsCreator] = useState(false)
   const [copied, setCopied] = useState(false)
-  const router = useRouter()
+  const router = useRouter();
+  const socket = useSocket();
   const searchParams = useSearchParams();
-  const {roomId} = use(params);
+  const { roomId } = use(params);
 
-
-  socket.on("connect", () => {
-    console.log(socket.id); // x8WIv7-mJelg7on_ALbx
-    
-  });
-
-  
-
-  socket.on("disconnect", () => {
-    console.log(socket.id); // undefined
-  });
-
-  // useEffect(() => {
-  //   // socket.emit("joinRoom", params.roomId);
-  // }, [params.roomId]);
 
   useEffect(() => {
     // Get username and creator status from URL parameters
@@ -61,32 +45,42 @@ export default function ChatRoomPage({ params }: ChatRoomPageProps) {
 
     if (usernameParam) setUsername(usernameParam)
     if (creatorParam === "true") setIsCreator(true)
+  }, [])
 
-    // Add some sample messages for demonstration
-    setMessages([
-      {
-        id: "1",
-        username: "System",
-        content: `Welcome to room: ${roomId}`,
-        timestamp: new Date(),
-        isOwn: false,
-      },
-    ])
 
-    socket.on("onReceiveMessage", (message) => {
-      console.log("onMessage", message);
-      setMessages((prev) => {
-        console.log("prev", prev);
-        console.log("message", message);
-        return [...prev, message];
-      });
-    });
-  }, []) //  ✅ run only once
+  useEffect(() => {
+
+    socket.emit("joinRoom", roomId);
+
+    const handleMessage = (message) => {
+      console.log("Message: ", message);
+
+      // Only add message if it's not from current user
+      if (!message.isOwn) {
+        setMessages((prev) => [...prev, message]);
+      }
+    }
+
+    socket.on("message", handleMessage);
+
+    return () => {
+      disconnect();
+    }
+  }, [roomId, username, socket]);
+
+  const disconnect = () => {
+    socket.off("connect");
+    socket.off("joinRoom");
+    socket.off("message");
+
+  }
+
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
       const message: Message = {
         id: Date.now().toString(),
+        roomId: roomId,
         username: username,
         content: newMessage,
         timestamp: new Date(),
@@ -94,7 +88,7 @@ export default function ChatRoomPage({ params }: ChatRoomPageProps) {
       }
       setMessages((prev) => [...prev, message])
       setNewMessage("")
-      socket.emit("onSendMessage", roomId, message);
+      socket.emit("message", message);
     }
   }
 
@@ -116,7 +110,7 @@ export default function ChatRoomPage({ params }: ChatRoomPageProps) {
   }
 
   const formatTime = (date: Date) => {
-    
+
     return new Date(date)?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   }
 
@@ -126,7 +120,12 @@ export default function ChatRoomPage({ params }: ChatRoomPageProps) {
       <div className="bg-white border-b border-gray-200 p-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => router.push("/")} className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => {
+              router.push("/");
+              disconnect();
+            }
+
+            } className="flex items-center gap-2">
               <ArrowLeft className="w-4 h-4" />
               Leave Room
             </Button>
@@ -160,13 +159,12 @@ export default function ChatRoomPage({ params }: ChatRoomPageProps) {
                 {messages.map((message) => (
                   <div key={message.id} className={`flex ${message.isOwn ? "justify-end" : "justify-start"}`}>
                     <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                        message.isOwn
-                          ? "bg-blue-500 text-white"
-                          : message.username === "System"
-                            ? "bg-gray-100 text-gray-600 text-center"
-                            : "bg-gray-200 text-gray-800"
-                      }`}
+                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${message.isOwn
+                        ? "bg-blue-500 text-white"
+                        : message.username === "System"
+                          ? "bg-gray-100 text-gray-600 text-center"
+                          : "bg-gray-200 text-gray-800"
+                        }`}
                     >
                       {!message.isOwn && message.username !== "System" && (
                         <div className="text-xs font-medium mb-1">{message.username}</div>
